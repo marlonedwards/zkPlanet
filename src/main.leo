@@ -31,7 +31,6 @@ program zkplanet.aleo {
         gold_total: u32,
         water_total: u32,
         population_total: u32,
-        opponent: address,
     }
 
     // Trade record for resource exchange
@@ -39,39 +38,124 @@ program zkplanet.aleo {
         owner: address,
         sender: address,
         receiver: address,
-        iron_amount: u32,
-        gold_amount: u32,
-        water_amount: u32,
+        // Resources requested by sender
+        requested_iron: u32,
+        requested_gold: u32,
+        requested_water: u32,
+        // Resources offered by sender
+        offered_iron: u32,
+        offered_gold: u32,
+        offered_water: u32,
         is_completed: bool,
     }
 
-    // Creates a new game board with random resources per plot
+
+    mapping generated_plots: u8 => Plot;
+
+    function get_resource_value(source: u128, position: u8) -> u32 {
+        // Use u32 for shift amount since u128 isn't supported for shifts
+        let shift_amount: u32 = (position as u32) * 4u32;
+        // Shift right by position * 4 bits, then mask with 0xF (15)
+        let shifted: u128 = source >> shift_amount;
+        let masked: u128 = shifted & 15u128;
+        // Convert to u32 and add base value
+        return (masked as u32) + 50u32;
+    }
+
+    // Modified new transition
     transition new() -> (Board, PlayerState) {
-        // Initialize empty plot with random resources
-        let empty_plot: Plot = Plot {
-            iron: 100u32,
-            gold: 100u32,
-            water: 100u32,
-            population: 0u32,
-            has_extractor: false,
-            has_habitat: false
-        };
+        // Create one large random seed, can be replaced with hashed wallet address/nonce
+        let seed: u128 = WALLET_ADDRESS;
 
-        // Create board with empty plots
+        // Create board using segments of the seed
         let board: Board = Board {
-            r1: Row { c1: empty_plot, c2: empty_plot, c3: empty_plot },
-            r2: Row { c1: empty_plot, c2: empty_plot, c3: empty_plot },
-            r3: Row { c1: empty_plot, c2: empty_plot, c3: empty_plot }
+            r1: Row { 
+                c1: Plot {
+                    iron: get_resource_value(seed, 0u8),
+                    gold: get_resource_value(seed, 1u8),
+                    water: get_resource_value(seed, 2u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                },
+                c2: Plot {
+                    iron: get_resource_value(seed, 3u8),
+                    gold: get_resource_value(seed, 4u8),
+                    water: get_resource_value(seed, 5u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                },
+                c3: Plot {
+                    iron: get_resource_value(seed, 6u8),
+                    gold: get_resource_value(seed, 7u8),
+                    water: get_resource_value(seed, 8u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                }
+            },
+            r2: Row { 
+                c1: Plot {
+                    iron: get_resource_value(seed, 9u8),
+                    gold: get_resource_value(seed, 10u8),
+                    water: get_resource_value(seed, 11u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                },
+                c2: Plot {
+                    iron: get_resource_value(seed, 12u8),
+                    gold: get_resource_value(seed, 13u8),
+                    water: get_resource_value(seed, 14u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                },
+                c3: Plot {
+                    iron: get_resource_value(seed, 15u8),
+                    gold: get_resource_value(seed, 16u8),
+                    water: get_resource_value(seed, 17u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                }
+            },
+            r3: Row { 
+                c1: Plot {
+                    iron: get_resource_value(seed, 18u8),
+                    gold: get_resource_value(seed, 19u8),
+                    water: get_resource_value(seed, 20u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                },
+                c2: Plot {
+                    iron: get_resource_value(seed, 21u8),
+                    gold: get_resource_value(seed, 22u8),
+                    water: get_resource_value(seed, 23u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                },
+                c3: Plot {
+                    iron: get_resource_value(seed, 24u8),
+                    gold: get_resource_value(seed, 25u8),
+                    water: get_resource_value(seed, 26u8),
+                    population: 0u32,
+                    has_extractor: false,
+                    has_habitat: false
+                }
+            }
         };
 
-        // Initialize player state with starting resources
+        // Initialize player state
         let player: PlayerState = PlayerState {
             owner: self.caller,
             iron_total: 0u32,
-            gold_total: 50u32, // Starting gold
+            gold_total: 50u32,
             water_total: 0u32,
             population_total: 0u32,
-            opponent: OPPONENT_ADDRESS,
         };
 
         return (board, player);
@@ -108,7 +192,6 @@ program zkplanet.aleo {
             gold_total: new_gold_total,
             water_total: new_water_total,
             population_total: player.population_total,
-            opponent: player.opponent,
         };
 
         // Create updated plot with extractor
@@ -154,7 +237,6 @@ program zkplanet.aleo {
             gold_total: player.gold_total - 10u32,
             water_total: player.water_total - 10u32,
             population_total: player.population_total + 25u32,
-            opponent: player.opponent,
         };
 
         // Create updated plot with habitat
@@ -258,53 +340,71 @@ program zkplanet.aleo {
     // Trade functions remain the same as they don't modify struct fields directly
     transition propose_trade(
         receiver: address,
-        iron_amount: u32,
-        gold_amount: u32,
-        water_amount: u32,
+        // Resources being requested
+        requested_iron: u32,
+        requested_gold: u32,
+        requested_water: u32,
+        // Resources being offered
+        offered_iron: u32,
+        offered_gold: u32,
+        offered_water: u32,
         player: PlayerState
     ) -> Trade {
-        assert(player.iron_total >= iron_amount);
-        assert(player.gold_total >= gold_amount);
-        assert(player.water_total >= water_amount);
+        // Verify sender has enough resources to offer
+        assert(player.iron_total >= offered_iron);
+        assert(player.gold_total >= offered_gold);
+        assert(player.water_total >= offered_water);
 
+        // Create trade proposal
         return Trade {
             owner: receiver,
             sender: self.caller,
             receiver: receiver,
-            iron_amount: iron_amount,
-            gold_amount: gold_amount,
-            water_amount: water_amount,
+            requested_iron: requested_iron,
+            requested_gold: requested_gold,
+            requested_water: requested_water,
+            offered_iron: offered_iron,
+            offered_gold: offered_gold,
+            offered_water: offered_water,
             is_completed: false,
         };
     }
 
+    // Modified accept_trade transition
     transition accept_trade(
         trade: Trade,
         sender_state: PlayerState,
         receiver_state: PlayerState
     ) -> (PlayerState, PlayerState) {
+        // Verify trade hasn't been completed
         assert(!trade.is_completed);
+        
+        // Verify receiver is the one accepting
         assert(trade.owner == self.caller);
+        
+        // Verify receiver has enough resources to fulfill trade
+        assert(receiver_state.iron_total >= trade.requested_iron);
+        assert(receiver_state.gold_total >= trade.requested_gold);
+        assert(receiver_state.water_total >= trade.requested_water);
 
+        // Update sender's state
         let updated_sender: PlayerState = PlayerState {
             owner: sender_state.owner,
-            iron_total: sender_state.iron_total - trade.iron_amount,
-            gold_total: sender_state.gold_total - trade.gold_amount,
-            water_total: sender_state.water_total - trade.water_amount,
+            iron_total: sender_state.iron_total - trade.offered_iron + trade.requested_iron,
+            gold_total: sender_state.gold_total - trade.offered_gold + trade.requested_gold,
+            water_total: sender_state.water_total - trade.offered_water + trade.requested_water,
             population_total: sender_state.population_total,
-            opponent: sender_state.opponent,
         };
 
+        // Update receiver's state
         let updated_receiver: PlayerState = PlayerState {
             owner: receiver_state.owner,
-            iron_total: receiver_state.iron_total + trade.iron_amount,
-            gold_total: receiver_state.gold_total + trade.gold_amount,
-            water_total: receiver_state.water_total + trade.water_amount,
+            iron_total: receiver_state.iron_total + trade.offered_iron - trade.requested_iron,
+            gold_total: receiver_state.gold_total + trade.offered_gold - trade.requested_gold,
+            water_total: receiver_state.water_total + trade.offered_water - trade.requested_water,
             population_total: receiver_state.population_total,
-            opponent: receiver_state.opponent,
         };
 
         return (updated_sender, updated_receiver);
     }
 }
-
