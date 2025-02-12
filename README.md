@@ -11,7 +11,7 @@ The game is currently being developed for the command line with future plans for
 
 ## To-Do List
 - [x] Create main planet structs
-- [ ] Create structs for buildings responsible for resource collection
-- [ ] Create framework for spending resources
-- [ ] Separate game loop from communicaton and trade logic
-- [ ] Implement trading between two players with in-game currency
+- [x] Create structs for buildings responsible for resource collection
+- [x] Create framework for spending resources
+- [x] Separate game loop from communicaton and trade logic
+- [x] Implement trading between two players with in-game currency
